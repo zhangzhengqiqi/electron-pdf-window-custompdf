@@ -9,7 +9,20 @@ const got = require('got')
 const BrowserWindow = isRenderer
   ? electron.remote.BrowserWindow : electron.BrowserWindow
 
-const PDF_JS_PATH = path.join(__dirname, 'pdfjs', 'web', 'viewer.html')
+const URL = require('url');
+const isDev = require('electron-is-dev')
+
+const app = isRenderer
+  ? electron.remote.app : electron.app
+let PDF_JS_PATH = ''
+
+if (isDev) {
+  PDF_JS_PATH = URL.format({ pathname: path.resolve(path.resolve(__dirname), 'pdfjs', 'web', 'viewer.html') })
+} else if (process.platform === 'darwin') {
+  PDF_JS_PATH = path.join(app.getAppPath() + '/' + __dirname, 'pdfjs', 'web', 'viewer.html') //mac
+} else {
+  PDF_JS_PATH = path.join(`${app.getAppPath()}\\${__dirname}`, 'pdfjs', 'web', 'viewer.html') //windows
+}
 
 function isAlreadyLoadedWithPdfJs (url) {
   return url.startsWith(`file://${PDF_JS_PATH}?file=`)
@@ -79,15 +92,7 @@ class PDFWindow extends BrowserWindow {
   }
 
   loadURL (url, options) {
-    return isPDF(url).then(isit => {
-      if (isit) {
-        return super.loadURL(`file://${
-          path.join(__dirname, 'pdfjs', 'web', 'viewer.html')}?file=${
-            decodeURIComponent(url)}`, options)
-      } else {
-        return super.loadURL(url, options)
-      }
-    }).catch(() => super.loadURL(url, options))
+    super.loadURL(`file://${path.join(__dirname, 'pdfjs', 'web', 'viewer.html')}?file=${decodeURIComponent(url)}`, options)
   }
 }
 
@@ -108,14 +113,7 @@ PDFWindow.addSupport = function (browserWindow) {
 
   const load = browserWindow.loadURL
   browserWindow.loadURL = function (url, options) {
-    return isPDF(url).then(isit => {
-      if (isit) {
-        return load.call(browserWindow, `file://${PDF_JS_PATH}?file=${
-          decodeURIComponent(url)}`, options)
-      } else {
-        return load.call(browserWindow, url, options)
-      }
-    })
+    load.call(browserWindow, `file://${PDF_JS_PATH}?file=${decodeURIComponent(url)}`, options)
   }
 }
 

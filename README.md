@@ -63,3 +63,31 @@ win.loadURL('file:///a/b/c.pdf')
 ```
 $ npm test
 ```
+
+### 项目定制处理
+库内PDF_JS_PATH默认为_dirname 在本项目中 _dirname的地址并不全 因此会导致资源无法正常预览
+因此修改了本地electron-pdf-window库内的地址加载方式
+1.进入electron-pdf-window的index.js
+将 const PDF_JS_PATH = path.join(__dirname, 'pdfjs', 'web', 'viewer.html') 更改为
+const URL = require('url');
+const isDev = require('electron-is-dev')
+
+const app = isRenderer
+  ? electron.remote.app : electron.app
+let PDF_JS_PATH = ''
+
+if (isDev) {
+  PDF_JS_PATH = URL.format({ pathname: path.resolve(path.resolve(__dirname), 'pdfjs', 'web', 'viewer.html') })
+} else if (process.platform === 'darwin') {
+  PDF_JS_PATH = path.join(app.getAppPath() + '/' + __dirname, 'pdfjs', 'web', 'viewer.html') //mac
+} else {
+  PDF_JS_PATH = path.join(`${app.getAppPath()}\\${__dirname}`, 'pdfjs', 'web', 'viewer.html') //windows
+}
+
+2.为了提高加载速度
+①index.js内 loadURL()方法 改为loadURL(url, options) {
+    super.loadURL(`file://${path.join(__dirname, 'pdfjs', 'web', 'viewer.html')}?file=${decodeURIComponent(url)}`, options)
+}
+②index.js内 第113行 改为 browserWindow.loadURL = function (url, options) {
+    load.call(browserWindow, `file://${PDF_JS_PATH}?file=${decodeURIComponent(url)}`, options)
+  }
